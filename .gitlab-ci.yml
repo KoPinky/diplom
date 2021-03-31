@@ -1,0 +1,24 @@
+stages:
+  - build
+
+build-serv:
+  stage: build
+  only:
+    - master
+  script:
+    # Backend
+    - cd /builds/gcuKrso5/0/ttit-yan-2021/deploy/$CI_GROUP
+    - docker-compose build && docker-compose up -d --force-recreate
+    - docker-compose exec -T workspace-$CI_GROUP /bin/bash -c "composer install"
+    - docker-compose exec -T workspace-$CI_GROUP /bin/bash -c "chmod -R 777 /var/www/"
+    - cp /builds/gcuKrso5/0/ttit-yan-2021/deploy/$CI_GROUP/.project.env /builds/gcuKrso5/0/ttit-yan-2021/$CI_GROUP/backend/.env
+    - docker-compose exec -T workspace-$CI_GROUP /bin/bash -c "php /var/www/artisan migrate"
+    # Frontend
+    - rm -rf /builds/gcuKrso5/0/ttit-yan-2021/$CI_GROUP/backend/frontend
+    - cp -r /builds/gcuKrso5/0/ttit-yan-2021/$CI_GROUP/frontend /builds/gcuKrso5/0/ttit-yan-2021/$CI_GROUP/backend/frontend
+    - cd /builds/gcuKrso5/0/ttit-yan-2021/deploy/$CI_GROUP
+    - docker-compose exec -T workspace-$CI_GROUP /bin/bash -c "chmod -R 777 /var/www/frontend"
+    - docker-compose exec -T workspace-$CI_GROUP /bin/bash -c "cd /var/www/frontend && npm install && npm run build"
+    - docker-compose exec -T workspace-$CI_GROUP /bin/bash -c "cd /var/www && ln -s frontend/dist/index.html index.html"
+  tags:
+    - academy-vm-server
