@@ -64,4 +64,10 @@ class DocumentController extends Controller
     {
         return response()->json(DocumentService::objects_document($id));
     }
+
+    public function genELS(ObjectB $object)
+    {
+        return response()->json(DocumentService::generateXLS($object));
+    }
+
 }

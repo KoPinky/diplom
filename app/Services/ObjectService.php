@@ -109,7 +109,8 @@ class ObjectService
                     'work_lists.step_number',
                     'work_lists.work_name',
                     'work_lists.date_start',
-                    'work_lists.date_end'
+                    'work_lists.date_end',
+                    'work_lists.check'
                 ])
                 ->where('stage_list_id', '=', $stage->id)
                 ->get();

@@ -34,6 +34,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('/six/backend/')->group(function () {
 
+    Route::get('doc/{object}', [DocumentController::class, 'genELS']);
+
     /**
      * Чтобы не мучить наставника с миграциями.
      */
