@@ -36,6 +36,11 @@ Route::prefix('/six/backend/')->group(function () {
 
     Route::get('doc/{object}', [DocumentController::class, 'genELS']);
 
+
+    //tests
+    Route::get('/gAuth', [DocumentController::class, 'GAuth']);
+    Route::get('/arch', [DocumentController::class, 'archivateDocs']);
+    //tests
     /**
      * Чтобы не мучить наставника с миграциями.
      */

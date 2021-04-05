@@ -84,7 +84,7 @@ class DocumentService
     {
         $file = self::showOne($id);
         $file = $file['path'];
-        return response()->download(storage_path('app/public/'. $file));
+        return response()->download(storage_path('app/public/' . $file));
     }
 
     /**
@@ -227,7 +227,7 @@ class DocumentService
         $created_file = Document::query()->create([
             'name' => $name,
             'object_id' => $data['object_id'],
-            'path' => 'documents/'.md5($name),
+            'path' => 'documents/' . md5($name),
             'mime' => '.xlsx',
             'size' => $size
         ]);
@@ -252,4 +252,15 @@ class DocumentService
         $sheet->getStyle("A{$line}:G{$line}")->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_LEFT);
         $sheet->getStyle("A{$line}:G{$line}")->getAlignment()->setVertical(PHPExcel_Style_Alignment::VERTICAL_CENTER);
     }
+
+    static public function archivateDocs()
+    {
+        $name = '/back_up_' . date('yyyymmdd') . '.zip';
+        $filename = storage_path() . '/app/public/back_ups' . $name;
+        $path = storage_path() . '/app/public/documents';
+        $files = array_diff(scandir($path), ['..', '.']);
+        ZipArchiveService::addArchive($filename, $path, $files);
+        return response()->download(storage_path('app/public/back_ups' . $name));
+    }
+
 }

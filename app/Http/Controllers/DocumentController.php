@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ObjectB;
 use App\Services\DocumentService;
+use App\Services\GoogleDriveService;
 use App\Services\ObjectService;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -69,5 +70,16 @@ class DocumentController extends Controller
     {
         return response()->json(DocumentService::generateXLS($object));
     }
+
+    public function GAuth()
+    {
+        return response()->json(GoogleDriveService::fnut());
+    }
+
+    public function archivateDocs()
+    {
+        return DocumentService::archivateDocs();
+    }
+
 
 }
