@@ -63,7 +63,37 @@ class GoogleDriveService
         return $client;
     }
 
-    function insert_file_to_drive($file_path, $file_name, $parent_file_id = null)
+    public static function get_files_and_folders(){
+        $client = self::getClient();
+        $service = new Google_Service_Drive($client);
+
+        $parameters['q'] = "mimeType='application/vnd.google-apps.folder' and 'root' in parents and trashed=false";
+        $files = $service->files->listFiles($parameters);
+
+        echo "<ul>";
+        foreach( $files as $k => $file ){
+            echo "<li>
+
+            {$file['name']} - {$file['id']} ---- ".$file['mimeType'];
+
+            try {
+                // subfiles
+                $sub_files = $service->files->listFiles(array('q' => "'{$file['id']}' in parents"));
+                echo "<ul>";
+                foreach( $sub_files as $kk => $sub_file ) {
+                    echo "<li&gt {$sub_file['name']} - {$sub_file['id']}  ---- ". $sub_file['mimeType'] ." </li>";
+                }
+                echo "</ul>";
+            } catch (\Throwable $th) {
+                // dd($th);
+            }
+
+            echo "</li>";
+        }
+        echo "</ul>";
+    }
+
+    static public function insert_file_to_drive($file_path, $file_name, $parent_file_id = null)
     {
         $client = self::getClient();
         $service = new Google_Service_Drive($client);

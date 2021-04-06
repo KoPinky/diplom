@@ -66,19 +66,15 @@ class DocumentController extends Controller
         return response()->json(DocumentService::objects_document($id));
     }
 
-    public function genELS(ObjectB $object)
+    public function generateObjectSummary(ObjectB $object)
     {
         return response()->json(DocumentService::generateXLS($object));
     }
 
-    public function GAuth()
-    {
-        return response()->json(GoogleDriveService::fnut());
-    }
 
     public function archivateDocs()
     {
-        return DocumentService::archivateDocs();
+        return DocumentService::genWord();
     }
 
 

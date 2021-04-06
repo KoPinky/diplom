@@ -19,6 +19,7 @@ use PHPExcel_Style_Border;
 use PHPExcel_Style_Fill;
 use PHPExcel_Worksheet_PageSetup;
 use PHPExcel_Writer_Excel2007;
+use PhpOffice\PhpWord\PhpWord;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Illuminate\Http\Request;
 use function GuzzleHttp\Psr7\str;
@@ -253,14 +254,157 @@ class DocumentService
         $sheet->getStyle("A{$line}:G{$line}")->getAlignment()->setVertical(PHPExcel_Style_Alignment::VERTICAL_CENTER);
     }
 
-    static public function archivateDocs()
+    static public function backupDocs()
     {
         $name = '/back_up_' . date('yyyymmdd') . '.zip';
-        $filename = storage_path() . '/app/public/back_ups' . $name;
+        $path_archive = storage_path() . '/app/public/back_ups';
+        $filename = $path_archive . $name;
         $path = storage_path() . '/app/public/documents';
         $files = array_diff(scandir($path), ['..', '.']);
+
         ZipArchiveService::addArchive($filename, $path, $files);
+
+        $success = GoogleDriveService::insert_file_to_drive($filename, $name);
+
+        if ($success) {
+            echo "file uploaded successfully";
+        } else {
+            echo "Something went wrong.";
+        }
+
         return response()->download(storage_path('app/public/back_ups' . $name));
     }
 
+    static public function genWord()
+    {
+
+        $phpWord = new  PhpWord();
+
+        $phpWord->setDefaultFontName('Times New Roman');
+        $phpWord->setDefaultFontSize(14);
+
+        $properties = $phpWord->getDocInfo();
+
+        $properties->setCreator('Name');
+        $properties->setCompany('Company');
+        $properties->setTitle('Title');
+        $properties->setDescription('Description');
+        $properties->setCategory('My category');
+        $properties->setLastModifiedBy('My name');
+        $properties->setCreated(mktime(0, 0, 0, 3, 12, 2015));
+        $properties->setModified(mktime(0, 0, 0, 3, 14, 2015));
+        $properties->setSubject('My subject');
+        $properties->setKeywords('my, key, word');
+
+        $sectionStyle = array(
+
+            'orientation' => 'landscape',
+            'marginTop' => \PhpOffice\PhpWord\Shared\Converter::pixelToTwip(10),
+            'marginLeft' => 600,
+            'marginRight' => 600,
+            'colsNum' => 1,
+            'pageNumberingStart' => 1,
+            'borderBottomSize'=>100,
+            'borderBottomColor'=>'C0C0C0'
+
+        );
+        $section = $phpWord->addSection($sectionStyle);
+
+
+        $cellRowSpan = array('vMerge' => 'restart');
+        $cellRowContinue = array('vMerge' => 'continue');
+        $cellColSpan = array('gridSpan' => 2);
+        $section->addTextBreak(1); // перенос строки
+        $section->addText("Table with colspan and rowspan");
+
+        $styleTable = array('borderSize' => 6, 'borderColor' => '999999');
+        $cellRowSpan = array('vMerge' => 'restart', 'valign' => 'center');
+        $cellRowContinue = array('vMerge' => 'continue');
+        $cellColSpan2 = array('gridSpan' => 2, 'valign' => 'center');
+        $cellColSpan3 = array('gridSpan' => 3, 'valign' => 'center');
+
+        $cellHCentered = array('align' => 'center');
+        $cellVCentered = array('valign' => 'center');
+
+        $phpWord->addTableStyle('Colspan Rowspan', $styleTable);
+        $table = $section->addTable('Colspan Rowspan');
+        $table->addRow(null, array('tblHeader' => true));
+        $table->addCell(2000, $cellVCentered)->addText('A', array('bold' => true), $cellHCentered);
+        $table->addCell(2000, $cellVCentered)->addText('B', array('bold' => true), $cellHCentered);
+        $table->addCell(2000, $cellVCentered)->addText('C', array('bold' => true), $cellHCentered);
+        $table->addCell(2000, $cellColSpan2)->addText('D', array('bold' => true), $cellHCentered);
+
+        $table->addRow();
+        $table->addCell(2000, $cellColSpan3)->addText(' colspan=3 '
+            . '(need enough columns under -- one diff from html)', null, $cellHCentered);
+        $table->addCell(2000, $cellVCentered)->addText('E', null, $cellHCentered);
+        $table->addCell(2000, $cellVCentered)->addText('F', null, $cellHCentered);
+
+        $table->addRow();
+        $table->addCell(2000, $cellRowSpan)->addText('rowspan=2 '
+            . '(need one null cell under)', null, $cellHCentered);
+        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
+        $table->addCell(2000, $cellRowSpan)->addText('rowspan=3 '
+            . '(nedd 2 null celss under)', null, $cellHCentered);
+        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
+        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
+
+        $table->addRow();
+        $table->addCell(null, $cellRowContinue); // 1 пустая в колонке 1
+        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
+        $table->addCell(null, $cellRowContinue); // 1 пустая в колонке 3
+        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
+        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
+
+
+        $table->addRow();
+        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
+        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
+        $table->addCell(null, $cellRowContinue);  // 2 пустая в колонке 3
+        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
+        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
+
+
+        $table->addRow();
+        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
+        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
+        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
+        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
+        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
+
+
+        $text = "PHPWord is a library written in pure PHP that provides a set of classes to write to and read from different document file formats.";
+        $fontStyle = array('name'=>'Arial', 'size'=>36, 'color'=>'075776', 'bold'=>TRUE, 'italic'=>TRUE);
+        $parStyle = array('align'=>'right','spaceBefore'=>10);
+
+        $section->addText(htmlspecialchars($text), $fontStyle,$parStyle);
+
+        $objWriter = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord,'Word2007');
+        //$objWriter->save('doc.docx');
+
+        $name = date('dmYHi') . '_' . 'ioidna';
+        $path = storage_path() . '/app/public/documents' . '/' . $name . '.docx';
+
+        $objWriter->save($path);
+        $size = filesize($path);
+        $mime = mime_content_type($path);
+        $created_file = Document::query()->create([
+            'name' => $name,
+            'object_id' => 1,
+            'path' => 'documents/' . md5($name),
+            'mime' => '.xlsx',
+            'size' => $size
+        ]);
+        return response()->download(storage_path('/app/public/documents' . '/' . $name . '.docx'));
+    }
+
+    public static function WordTableRow($data, $table)
+    {
+        $table->addRow();
+        $table->addCell(null, $cellRowContinue); // 1 пустая в колонке 1
+        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
+        $table->addCell(null, $cellRowContinue); // 1 пустая в колонке 3
+        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
+        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
+    }
 }
