@@ -44,4 +44,21 @@ class ValidateDoc
         return null;
     }
 
+    static public function validateSearch(array $input_data)
+    {
+        Validator::validate(
+            $input_data, [
+            'searchString' => 'string',
+            'startDate' => 'date',
+            'endDate.*' => 'date',
+            'documentType.*' => 'string|'
+        ], [
+                'searchString.string' => 'Поле searchString является строкой',
+                'startDate.date' => 'Поле startDate является датой',
+                'endDate.date' => 'Поле endDate является датой',
+                'documentType.string' => 'Поле documentType является строкой'
+            ]
+        );
+    }
+
 }

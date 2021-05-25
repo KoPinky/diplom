@@ -38,8 +38,7 @@ Route::prefix('/six/backend/')->group(function () {
 
 
     //tests
-    Route::get('/gAuth', [DocumentController::class, 'GAuth']);
-    Route::get('/arch', [DocumentController::class, 'archivateDocs']);
+
     //tests
     /**
      * Чтобы не мучить наставника с миграциями.
@@ -83,6 +82,8 @@ Route::prefix('/six/backend/')->group(function () {
          * Маршруты документооборота
          * ..........................
          */
+        Route::get('/gAuth', [DocumentController::class, 'GAuth']);
+        Route::get('/object/{object}/document/generate/{type}', [DocumentController::class, 'generateObjectSummary']);
         Route::post('/document', [DocumentController::class, 'docCreate'])
             ->name('document');
         Route::get('/documents', [DocumentController::class, 'docsShow'])

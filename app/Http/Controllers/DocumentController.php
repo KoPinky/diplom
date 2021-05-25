@@ -26,9 +26,9 @@ class DocumentController extends Controller
     /**
      * @return JsonResponse
      */
-    public function docsShow(): JsonResponse
+    public function docsShow($request): JsonResponse
     {
-        return response()->json(DocumentService::showAll());
+        return response()->json(DocumentService::showAll($request));
     }
 
     /**
@@ -66,15 +66,15 @@ class DocumentController extends Controller
         return response()->json(DocumentService::objects_document($id));
     }
 
-    public function generateObjectSummary(ObjectB $object)
+    public function generateObjectSummary(ObjectB $object, $type)
     {
-        return response()->json(DocumentService::generateXLS($object));
+        return DocumentService::generateObjectSummary($object, $type);
     }
 
 
     public function archivateDocs()
     {
-        return DocumentService::genWord();
+        return DocumentService::generateObjectSummary();
     }
 
 

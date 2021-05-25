@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Validator;
 use PHPExcel;
 use PHPExcel_Style_Alignment;
 use PHPExcel_Style_Border;
@@ -45,8 +46,10 @@ class DocumentService
                 return $validate_count;
             }
         }
+
         $result = [];
         ObjectB::query()->findOrFail($request->object_id);
+        echo 12;
         foreach ($request->file as $file) {
             $path = $file->store('documents', 'public');
             $created_file = Document::query()->create([
@@ -63,9 +66,24 @@ class DocumentService
     /**
      * @return array
      */
-    public static function showAll(): array
+    public static function showAll($request): array
     {
-        return Document::query()->get()->all();
+        ValidateDoc::validateSearch($request->all());
+
+        $documents = Document::query()->select()->all();
+        if ($request->searchString != "") {
+            $documents = $documents->where('name', 'LIKE', '%' . $request->searchString . '%')->all();
+        }
+        if ($request->startDate != '') {
+            $documents = $documents->where('created_at', '>', $request->startDate)->gall();
+        }
+        if ($request->endDate != '') {
+            $documents = $documents->where('created_at', '<', $request->endDate)->all();
+        }
+        if ($request->documentType != '') {
+            $documents = $documents->where('mime', '=', $request->documentType)->all();
+        }
+        return $documents;
     }
 
     /**
@@ -109,13 +127,22 @@ class DocumentService
         return $documents;
     }
 
-    static public function generateXLS(ObjectB $object)
+    static public function generateObjectSummary(ObjectB $object, $type)
     {
         $data = ObjectService::show($object);
-        return self::generateObjectSummary($data);
+        switch ($type) {
+            case 'xlsx':
+                return self::generateXLSX($data);
+                break;
+            case 'docx':
+                return self::generateWord($data);
+                break;
+            default:
+                echo "Неверно переданы данные!";
+        }
     }
 
-    static public function generateObjectSummary($data)
+    static public function generateXLSX($data)
     {
         $xls = new PHPExcel();
 
@@ -275,7 +302,7 @@ class DocumentService
         return response()->download(storage_path('app/public/back_ups' . $name));
     }
 
-    static public function genWord()
+    static public function generateWord($data)
     {
 
         $phpWord = new  PhpWord();
@@ -285,31 +312,39 @@ class DocumentService
 
         $properties = $phpWord->getDocInfo();
 
-        $properties->setCreator('Name');
-        $properties->setCompany('Company');
-        $properties->setTitle('Title');
-        $properties->setDescription('Description');
-        $properties->setCategory('My category');
-        $properties->setLastModifiedBy('My name');
-        $properties->setCreated(mktime(0, 0, 0, 3, 12, 2015));
-        $properties->setModified(mktime(0, 0, 0, 3, 14, 2015));
-        $properties->setSubject('My subject');
-        $properties->setKeywords('my, key, word');
+        $properties->setCreator('System');
+        $properties->setCompany('Констант-с');
+        $properties->setCreated(date('d.m.y'));
+        $properties->setModified(date('d.m.y'));
 
         $sectionStyle = array(
 
-            'orientation' => 'landscape',
+            'orientation' => 'portrait',
             'marginTop' => \PhpOffice\PhpWord\Shared\Converter::pixelToTwip(10),
             'marginLeft' => 600,
             'marginRight' => 600,
             'colsNum' => 1,
             'pageNumberingStart' => 1,
-            'borderBottomSize'=>100,
-            'borderBottomColor'=>'C0C0C0'
+            'borderBottomSize' => 100,
+            'borderBottomColor' => 'C0C0C0'
 
         );
         $section = $phpWord->addSection($sectionStyle);
 
+
+        $text = "Сводка по активным объектам.";
+        $fontStyle = array('name' => 'Arial', 'size' => 24, 'bold' => TRUE);
+        $parStyle = array('align' => 'justify', 'spaceBefore' => 1.25);
+        $section->addText(htmlspecialchars($text), $fontStyle, $parStyle);
+
+
+        self::WordTextBlock($section);
+        self::WordTextBlock($section, 'Адрес:', $data['address']);
+        self::WordTextBlock($section, 'Площадь:', $data['area']);
+        self::WordTextBlock($section, 'Количество комнат:', $data['amountRoom']);
+        self::WordTextBlock($section, 'Дата начала работ:', $data['date_start']);
+        self::WordTextBlock($section, 'Дата завершения работ:', $data['date_end']);
+        self::WordTextBlock($section, 'Описание:', $data['description']);
 
         $cellRowSpan = array('vMerge' => 'restart');
         $cellRowContinue = array('vMerge' => 'continue');
@@ -328,61 +363,35 @@ class DocumentService
 
         $phpWord->addTableStyle('Colspan Rowspan', $styleTable);
         $table = $section->addTable('Colspan Rowspan');
-        $table->addRow(null, array('tblHeader' => true));
-        $table->addCell(2000, $cellVCentered)->addText('A', array('bold' => true), $cellHCentered);
-        $table->addCell(2000, $cellVCentered)->addText('B', array('bold' => true), $cellHCentered);
-        $table->addCell(2000, $cellVCentered)->addText('C', array('bold' => true), $cellHCentered);
-        $table->addCell(2000, $cellColSpan2)->addText('D', array('bold' => true), $cellHCentered);
 
-        $table->addRow();
         $table->addCell(2000, $cellColSpan3)->addText(' colspan=3 '
             . '(need enough columns under -- one diff from html)', null, $cellHCentered);
         $table->addCell(2000, $cellVCentered)->addText('E', null, $cellHCentered);
         $table->addCell(2000, $cellVCentered)->addText('F', null, $cellHCentered);
 
-        $table->addRow();
-        $table->addCell(2000, $cellRowSpan)->addText('rowspan=2 '
-            . '(need one null cell under)', null, $cellHCentered);
-        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
-        $table->addCell(2000, $cellRowSpan)->addText('rowspan=3 '
-            . '(nedd 2 null celss under)', null, $cellHCentered);
-        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
-        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
+        foreach ($data['stages'] as $datum) {
+            $table->addRow();
+            $table->addCell(2000, $cellVCentered)->addText((string)$datum['stage']['step_number'], null, $cellHCentered);
+            $table->addCell(2000, $cellVCentered)->addText((string)$datum['stage']['stage_name'], null, $cellHCentered);
+            $table->addCell(2000, $cellColSpan2)->addText((string)$datum['stage']['name'], null, $cellHCentered);
+            $table->addCell(2000, $cellVCentered)->addText((string)$datum['stage']['status_name'], null, $cellHCentered);
 
-        $table->addRow();
-        $table->addCell(null, $cellRowContinue); // 1 пустая в колонке 1
-        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
-        $table->addCell(null, $cellRowContinue); // 1 пустая в колонке 3
-        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
-        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
+            foreach ($datum['works'] as $work) {
+                $table->addRow();
+                $table->addCell(2000, $cellVCentered)->addText((string)$work['step_number'], null, $cellHCentered);
+                $table->addCell(2000, $cellVCentered)->addText((string)$work['work_name'], null, $cellHCentered);
+                $table->addCell(2000, $cellVCentered)->addText((string)$work['date_start'], null, $cellHCentered);
+                $table->addCell(2000, $cellVCentered)->addText((string)$work['date_end'], null, $cellHCentered);
+                $table->addCell(2000, $cellVCentered)->addText((string)($work['check']) ? 'Завершен' : 'В работе', null, $cellHCentered);
+            }
 
-
-        $table->addRow();
-        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
-        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
-        $table->addCell(null, $cellRowContinue);  // 2 пустая в колонке 3
-        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
-        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
+        }
 
 
-        $table->addRow();
-        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
-        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
-        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
-        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
-        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
-
-
-        $text = "PHPWord is a library written in pure PHP that provides a set of classes to write to and read from different document file formats.";
-        $fontStyle = array('name'=>'Arial', 'size'=>36, 'color'=>'075776', 'bold'=>TRUE, 'italic'=>TRUE);
-        $parStyle = array('align'=>'right','spaceBefore'=>10);
-
-        $section->addText(htmlspecialchars($text), $fontStyle,$parStyle);
-
-        $objWriter = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord,'Word2007');
+        $objWriter = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007');
         //$objWriter->save('doc.docx');
 
-        $name = date('dmYHi') . '_' . 'ioidna';
+        $name = date('dmYHi') . '_' . 'сводка по активным объектам';
         $path = storage_path() . '/app/public/documents' . '/' . $name . '.docx';
 
         $objWriter->save($path);
@@ -398,13 +407,17 @@ class DocumentService
         return response()->download(storage_path('/app/public/documents' . '/' . $name . '.docx'));
     }
 
-    public static function WordTableRow($data, $table)
+    /**
+     * @param null $head
+     * @param null $data
+     * @param $section
+     */
+    public static function WordTextBlock($section, $head = null, $data = null)
     {
-        $table->addRow();
-        $table->addCell(null, $cellRowContinue); // 1 пустая в колонке 1
-        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
-        $table->addCell(null, $cellRowContinue); // 1 пустая в колонке 3
-        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
-        $table->addCell(2000, $cellVCentered)->addText('Т', null, $cellHCentered);
+        $text = "{$head}\t{$data}";
+        $fontStyle = array('name' => 'Arial', 'size' => 14, 'bold' => TRUE);
+        $parStyle = array('align' => 'left', 'spaceBefore' => 1.25);
+
+        $section->addText(htmlspecialchars($text), $fontStyle, $parStyle);
     }
 }
